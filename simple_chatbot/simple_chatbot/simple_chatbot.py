@@ -11,7 +11,7 @@ import pynecone as pc
 docs_url = "https://pynecone.io/docs/getting-started/introduction"
 filename = f"{config.app_name}/{config.app_name}.py"
 
-openai.api_key = os.environ('OPENAI_API_KEY')
+openai.api_key = os.environ['OPENAI_API_KEY']
 
 
 def call_assistant(text) -> str:
@@ -33,12 +33,13 @@ class Message(Base):
 class State(pc.State):
     text: str = ""
     messages: list[Message] = []
+    answer: str = ""
 
-    @pc.var
     def output(self) -> str:
         if not self.text.strip():
             return "Advise will appear here."
         answer = call_assistant(self.text)
+        self.answer = answer
         return answer
 
     def post(self):
@@ -46,7 +47,7 @@ class State(pc.State):
             [
                 Message(
                     question=self.text,
-                    answer=self.output,
+                    answer=self.output(),
                     created_at=datetime.now().strftime("%B %d, %Y %I:%M %p"),
                 )
             ] + self.messages
@@ -57,12 +58,12 @@ def header():
     return pc.box(
         pc.text("Simple-ChatBot 📭", font_size="2rem"),
         pc.text(
-            "Translate things and post them as messages!",
+            "input and post them as messages!",
             margin_top="0.5rem",
             color="#666",
         ),
         pc.input(
-            placeholder="Text to translate",
+            placeholder="Question",
             on_blur=State.set_text,
             margin_top="1rem",
             border_color="#eaeaef"
@@ -93,7 +94,7 @@ def output():
             position="absolute",
             top="-0.5rem",
         ),
-        pc.text(State.output),
+        pc.text(State.answer),
         padding="1rem",
         border="1px solid #eaeaef",
         margin_top="1rem",
