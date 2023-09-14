@@ -11,7 +11,7 @@ import pynecone as pc
 docs_url = "https://pynecone.io/docs/getting-started/introduction"
 filename = f"{config.app_name}/{config.app_name}.py"
 
-openai.api_key = os.getenv('API_KEY')
+openai.api_key = os.environ('OPENAI_API_KEY')
 
 
 def call_assistant(text) -> str:
