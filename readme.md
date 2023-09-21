@@ -1,4 +1,4 @@
-# My Project
+# KAKAO DEVELOPERS HELPER BOT
 
 ![Page Image](docs/page_image.png)
 
