@@ -354,4 +354,5 @@ pyrightconfig.json
 .history
 .ionide
 kakao_developers_helper_bot/assets/chroma_persist/*
+kakao_developers_helper_bot/assets/history/*
 # End of https://www.toptal.com/developers/gitignore/api/python,git,intellij,visualstudiocode,macos

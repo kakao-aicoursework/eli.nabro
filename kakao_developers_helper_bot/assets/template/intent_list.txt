@@ -1,0 +1,3 @@
+information: Questions that require in-depth, specialized knowledge about the codebase, architecture, or technologies used
+bug: Related to a bug, vulnerability, unexpected error with an existing feature
+history: Your job is to review previous questions and answers to understand the context of the user's message

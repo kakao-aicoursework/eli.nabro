@@ -1,0 +1,11 @@
+Your job is to respond to the user's message based on the provided related documents.
+
+<message>
+{user_message}
+</message>
+
+<related_documents>
+{related_documents}
+</related_documents>
+
+Answer:
