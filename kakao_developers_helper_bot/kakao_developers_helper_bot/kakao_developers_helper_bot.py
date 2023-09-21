@@ -5,19 +5,21 @@ import openai
 from pynecone import Base
 import pynecone as pc
 from typing import List
-from langchain.chat_models import ChatOpenAI
 from langchain.chains import SequentialChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts.chat import ChatPromptTemplate
 from langchain.chains import LLMChain
-from pprint import pprint
+
+from kakao_developers_helper_bot.langchain_call.chroma_db_repository import ChromaDbRepository
 
 openai.api_key = os.environ['OPENAI_API_KEY']
 with open('assets/kakaosink.txt', 'r', encoding='utf-8') as file:
     kakao_sink_contents = file.read()
 
 kakao_sink_path = os.path.join(os.getcwd(), "assets/kakaosink.txt")
-
+project3_data_dir = os.path.join(os.getcwd(), "assets/project3_data")
+chroma_persist_dir = os.path.join(os.getcwd(), "assets/chroma_persist")
+chroma_db_repository = ChromaDbRepository(chroma_persist_dir, project3_data_dir)
 
 class Message(Base):
     question: str
@@ -104,35 +106,9 @@ def create_chain(llm, template_path, output_key):
 
 
 def lang_chain_call_assistant(question: str, prev_messages: List[Message]):
-    assistant_llm = ChatOpenAI(temperature=0.1, max_tokens=8192, model="gpt-3.5-turbo-16k")
-    kakao_sink_chain = create_chain(assistant_llm, kakao_sink_path, "kakao_sink")
-    question_chain = LLMChain(
-        llm=assistant_llm,
-        prompt=ChatPromptTemplate.from_template(
-            template=f"{question}",
-        ),
-        output_key="result",
-        verbose=True,
-    )
-
-    preprocess_chain = SequentialChain(
-        chains=[
-            kakao_sink_chain,
-        ],
-        input_variables=[],
-        output_variables=["kakao_sink"],
-        verbose=True,
-    )
-
-    context = dict()
-    context = preprocess_chain(context)
-
-    context["answer"] = []
-    context = question_chain(context)
-    context["answer"].append(context["result"])
-
-    contents = "\n\n".join(context["answer"])
-    return contents
+    answers = chroma_db_repository.query_db(question)
+    print(answers)
+    return ",".join(answers)
 
 
 class State(pc.State):
@@ -182,6 +158,9 @@ class State(pc.State):
                     created_at=datetime.now().strftime("%B %d, %Y %I:%M %p"),
                 )
             ] + self.messages
+
+    def push_data(self):
+        chroma_db_repository.push_texts()
 
     def delete(self):
         self.messages.clear()
@@ -243,6 +222,7 @@ def index() -> pc.Component:
         header(),
         pc.button("Simple Post", on_click=State.post, margin_top="1rem"),
         pc.button("Function Call Post", on_click=State.function_call_post, margin_top="1rem", margin_left="1rem"),
+        pc.button("Push Data", on_click=State.push_data, margin_top="1rem", margin_left="1rem"),
         pc.button("LangChain Call Post", on_click=State.lang_chain_call, margin_top="1rem", margin_left="1rem"),
         pc.button("Delete", on_click=State.delete, margin_top="1rem", margin_left="1rem"),
         pc.vstack(
