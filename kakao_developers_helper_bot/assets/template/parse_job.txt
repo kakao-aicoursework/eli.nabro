@@ -1,0 +1,8 @@
+Your job is to select one job from the <job_list>.
+
+<job_list>
+{job_list}
+</job_list>
+
+User: {user_message}
+Job:

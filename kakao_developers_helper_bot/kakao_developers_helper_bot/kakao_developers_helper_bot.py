@@ -5,19 +5,25 @@ import openai
 from pynecone import Base
 import pynecone as pc
 from typing import List
-from langchain.chat_models import ChatOpenAI
 from langchain.chains import SequentialChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts.chat import ChatPromptTemplate
 from langchain.chains import LLMChain
-from pprint import pprint
+
+from kakao_developers_helper_bot.langchain_call.chroma_db_repository import ChromaDbRepository
+from kakao_developers_helper_bot.langchain_call.lang_chain_assistant import LangChainAssistant
 
 openai.api_key = os.environ['OPENAI_API_KEY']
 with open('assets/kakaosink.txt', 'r', encoding='utf-8') as file:
     kakao_sink_contents = file.read()
 
 kakao_sink_path = os.path.join(os.getcwd(), "assets/kakaosink.txt")
-
+project3_data_dir = os.path.join(os.getcwd(), "assets/project3_data")
+chroma_persist_dir = os.path.join(os.getcwd(), "assets/chroma_persist")
+chroma_db_repository = ChromaDbRepository(chroma_persist_dir, project3_data_dir)
+history_dir = os.path.join(os.getcwd(), "assets/history")
+template_dir = os.path.join(os.getcwd(), "assets/template")
+langchain_assistant = LangChainAssistant(history_dir, template_dir, chroma_db_repository)
 
 class Message(Base):
     question: str
@@ -102,38 +108,13 @@ def create_chain(llm, template_path, output_key):
         verbose=True,
     )
 
+def select_vector_db(question: str, prev_messages: List[Message]):
+    answers = chroma_db_repository.query_db(question)
+    print(answers)
+    return ",".join(answers)
 
-def lang_chain_call_assistant(question: str, prev_messages: List[Message]):
-    assistant_llm = ChatOpenAI(temperature=0.1, max_tokens=8192, model="gpt-3.5-turbo-16k")
-    kakao_sink_chain = create_chain(assistant_llm, kakao_sink_path, "kakao_sink")
-    question_chain = LLMChain(
-        llm=assistant_llm,
-        prompt=ChatPromptTemplate.from_template(
-            template=f"{question}",
-        ),
-        output_key="result",
-        verbose=True,
-    )
-
-    preprocess_chain = SequentialChain(
-        chains=[
-            kakao_sink_chain,
-        ],
-        input_variables=[],
-        output_variables=["kakao_sink"],
-        verbose=True,
-    )
-
-    context = dict()
-    context = preprocess_chain(context)
-
-    context["answer"] = []
-    context = question_chain(context)
-    context["answer"].append(context["result"])
-
-    contents = "\n\n".join(context["answer"])
-    return contents
-
+def call_langchain_assistant(question: str):
+    return langchain_assistant.generate_answer(question)
 
 class State(pc.State):
     text: str = ""
@@ -148,8 +129,10 @@ class State(pc.State):
             self.answer = call_assistant(self.text, self.messages)
         elif func == "function_call":
             self.answer = function_call_assistant(self.text, self.messages)
+        elif func == "select_vector_db":
+            self.answer = select_vector_db(self.text, self.messages)
         elif func == "lang_chain_call":
-            self.answer = lang_chain_call_assistant(self.text, self.messages)
+            self.answer = call_langchain_assistant(self.text)
 
         return self.answer
 
@@ -182,6 +165,19 @@ class State(pc.State):
                     created_at=datetime.now().strftime("%B %d, %Y %I:%M %p"),
                 )
             ] + self.messages
+
+    def select_vector_db(self):
+        self.messages = \
+            [
+                Message(
+                    question=self.text,
+                    answer=self.output("select_vector_db"),
+                    created_at=datetime.now().strftime("%B %d, %Y %I:%M %p"),
+                )
+            ] + self.messages
+
+    def push_data(self):
+        chroma_db_repository.push_texts()
 
     def delete(self):
         self.messages.clear()
@@ -243,6 +239,8 @@ def index() -> pc.Component:
         header(),
         pc.button("Simple Post", on_click=State.post, margin_top="1rem"),
         pc.button("Function Call Post", on_click=State.function_call_post, margin_top="1rem", margin_left="1rem"),
+        pc.button("Push Data", on_click=State.push_data, margin_top="1rem", margin_left="1rem"),
+        pc.button("Select Vector DB", on_click=State.select_vector_db, margin_top="1rem", margin_left="1rem"),
         pc.button("LangChain Call Post", on_click=State.lang_chain_call, margin_top="1rem", margin_left="1rem"),
         pc.button("Delete", on_click=State.delete, margin_top="1rem", margin_left="1rem"),
         pc.vstack(
