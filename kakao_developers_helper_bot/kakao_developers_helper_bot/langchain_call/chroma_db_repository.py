@@ -33,29 +33,37 @@ class ChromaDbRepository:
         for root, dirs, files in os.walk(self._data_dir):
             for file in files:
                 file_path = os.path.join(root, file)
+                file_name, file_extension = os.path.splitext(file)
                 try:
                     text = self._get_text(file_path)
                     Chroma.from_documents(text,
                                           OpenAIEmbeddings(),
                                           persist_directory=self._persist_dir,
-                                          collection_name=self._collection_name, )
+                                          collection_name=self._collection_name)
+                    Chroma.from_documents(text,
+                                          OpenAIEmbeddings(),
+                                          persist_directory=f'{self._persist_dir}/{file_name}',
+                                          collection_name=file_name)
+                    print(f"file: {file_name}")
                     print("SUCCESS: ", file_path)
                 except Exception as e:
                     print("FAILED: ", file_path + f"by({e})")
 
-    def query_db(self, query: str, use_retriever: bool = False) -> list[str]:
-        if self._db is None:
-            self._db = Chroma(
-                persist_directory=self._persist_dir,
-                embedding_function=OpenAIEmbeddings(),
-                collection_name=self._collection_name,
-            )
-            self._retriever = self._db.as_retriever()
+    def query_db(self, query: str, use_retriever: bool = False, collection_name: str = "") -> list[str]:
+        target_collection_name = collection_name if collection_name != "" else self._collection_name
+        persist_dir = f'{self._persist_dir}/{target_collection_name}' if collection_name != "" else self._persist_dir
+
+        _db = Chroma(
+            persist_directory=persist_dir,
+            embedding_function=OpenAIEmbeddings(),
+            collection_name=target_collection_name,
+        )
+        _retriever = _db.as_retriever()
 
         if use_retriever:
-            docs = self._retriever.get_relevant_documents(query)
+            docs = _retriever.get_relevant_documents(query)
         else:
-            docs = self._db.similarity_search(query)
+            docs = _db.similarity_search(query)
 
         str_docs = [doc.page_content for doc in docs]
         return str_docs

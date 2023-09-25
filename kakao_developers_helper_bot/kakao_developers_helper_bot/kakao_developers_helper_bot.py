@@ -50,7 +50,7 @@ def call_assistant(question: str, prev_messages: List[Message]) -> str:
 
 functions = [{
     "name": "kakao_sink_information",
-    "description": "kakao 의 신규 서비스 카카오싱크 ( kakaosink ) 에 대한 전반적인 정보를 가져옵니다. 이 정보는 기능, 과정, 도입안내를 포함합니",
+    "description": "kakao 의 신규 서비스 카카오싱크 ( kakaosink ) 에 대한 전반적인 정보를 가져옵니다. 이 정보는 기능, 과정, 도입안내를 포함합니다",
     "parameters": {
         "type": "object",
         "properties": {},

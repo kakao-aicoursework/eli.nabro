@@ -18,7 +18,7 @@ class LangChainAssistant:
         self._history_dir = history_dir
         self._job_list_text = os.path.join(template_dir, "job_list.txt")
         self._vector_db = vector_db
-        llm = ChatOpenAI(temperature=0.1, max_tokens=200, model="gpt-3.5-turbo")
+        llm = ChatOpenAI(temperature=0.1, max_tokens=4096, model="gpt-3.5-turbo-16k")
 
         search = GoogleSearchAPIWrapper(
             google_api_key=os.environ['GOOGLE_API_KEY'],
@@ -35,10 +35,20 @@ class LangChainAssistant:
             template_path=os.path.join(template_dir, "parse_job.txt"),
             output_key="job",
         )
+        self._select_wiki_page_chain = self.create_chain(
+            llm=llm,
+            template_path=os.path.join(template_dir, "select_wiki_page.txt"),
+            output_key="collection_name",
+        )
+        self._evaluate_check_chain = self.create_chain(
+            llm=llm,
+            template_path=os.path.join(template_dir, "evaluate_check.txt"),
+            output_key="evaluate_check",
+        )
         self._information_chain = self.create_chain(
             llm=llm,
             template_path=os.path.join(template_dir, "information_response.txt"),
-            output_key="output",
+            output_key="answer",
         )
         self.search_value_check_chain = self.create_chain(
             llm=llm,
@@ -102,24 +112,58 @@ class LangChainAssistant:
         history_file = self.load_conversation_history(conversation_id)
 
         context = dict(user_message=user_message)
+        action_count = 1
         context["job_list"] = self.read_prompt_template(self._job_list_text)
+        context["action_history"] = ""
+        context["chat_history"] = ""
+        context["information"] = ""
+        answer = ""
 
         while True:
             job = self._parse_job_chain.run(context)
             print(f"job: {job}")
-            if job == "search_kakao_wiki":
-                context["related_documents"] = self._vector_db.query_db(context["user_message"])
-
-                answer = self._information_chain.run(context)
-                break
-            elif job == "history":
+            if job == "search_kakao_wiki" and action_count < 30:
+                context["action_history"] = f'{context["action_history"]}\n{action_count}. 생각: 카카오 위키 페이지를 열람 해야겠다'
+                action_count += 1
+                wiki_page = self._select_wiki_page_chain.run(context)
+                print(f'wiki_page: {wiki_page}')
+                context["action_history"] = f'{context["action_history"]}\n{action_count}. 생각: 카카오 위키 중 {wiki_page}를 열람 해야겠다'
+                action_count += 1
+                context["search_result"] = self._vector_db.query_db(context["user_message"], collection_name=wiki_page)
+                context["action_history"] = f'{context["action_history"]}\n{action_count}. 행동: {wiki_page}를 열람 했다'
+                action_count += 1
+                y_or_n = self._evaluate_check_chain.run(context)
+                if y_or_n == "Y" or y_or_n == "y":
+                    context["information"] = f'{context["information"]}\n카카오 위키: {wiki_page} 정보\n{context["search_result"]}'
+                    context["action_history"] = f'{context["action_history"]}\n{action_count}. 판단: {wiki_page}를 정보는 사용자 질문을 대답하기에 적절하다'
+                else:
+                    context["action_history"] = f'{context["action_history"]}\n{action_count}. 판단: {wiki_page}를 정보는 사용자 질문을 대답하기에 적절하지 않다'
+                action_count += 1
+            elif job == "history" and action_count < 30:
+                context["action_history"] = f'{context["action_history"]}\n{action_count}. 생각: 사용자의 이전 질문을 열람 해야겠다'
+                action_count += 1
                 chat_history = self.get_chat_history(conversation_id)
-                context["user_message"] = f'<chat_history>\n{chat_history}\n</chat_history>\n<question>\n{context["user_message"]}\n</question>'
+                context["action_history"] = f'{context["action_history"]}\n{action_count}. 행동: 사용자의 이전 질문을 열람 했다'
+                action_count += 1
+                context["chat_history"] = chat_history
+            elif job == "search_internet" and action_count < 30:
+                context["action_history"] = f'{context["action_history"]}\n{action_count}. 생각: 인터넷에서 검색 해야겠다'
+                action_count += 1
+                context["search_result"] = self.search_tool.run(user_message)
+                context["action_history"] = f'{context["action_history"]}\n{action_count}. 행동: 인터넷에서 검색해서 자료를 획득했다'
+                action_count += 1
+                y_or_n = self._evaluate_check_chain.run(context)
+                if y_or_n == "Y" or y_or_n == "y":
+                    context["information"] = f'{context["information"]}\n인터넷 검색 자료: {wiki_page} 정보\n{context["search_result"]}'
+                    context["action_history"] = f'{context["action_history"]}\n{action_count}. 판단: 인터넷 정보는 사용자 질문을 대답하기에 적절하다'
+                else:
+                    context["action_history"] = f'{context["action_history"]}\n{action_count}. 판단: 인터넷 정보는 사용자 질문을 대답하기에 적절하지 않다'
+                action_count += 1
             else:
-                context["related_documents"] = self.query_web_search(context["user_message"])
                 answer = self._information_chain.run(context)
                 break
 
+        print(context["action_history"])
         self.log_user_message(history_file, user_message)
         self.log_bot_message(history_file, answer)
         return answer

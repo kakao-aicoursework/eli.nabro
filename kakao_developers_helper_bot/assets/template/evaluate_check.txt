@@ -1,0 +1,18 @@
+당신은 유능한 Assistant 입니다.
+<action_history> 에는 지금까지 당신이 답변하기 위해 수행한 Action 이 기록되어 있습니다.
+당신은 이전 단계에서, <user_message> 에 대답하기 위해서, <search_results> 에 적힌 information 을 수집하였습니다.
+이 information 이 user_message 에 대답하기에 적절하면 Y, 적절하지 않으면 N을 고르세요.
+
+<user_message>
+{user_message}
+</user_message>
+
+<search_results>
+{search_result}
+</search_results>
+
+<action_history>{action_history}
+</action_history>
+
+You must answer Y or N.
+Answer:

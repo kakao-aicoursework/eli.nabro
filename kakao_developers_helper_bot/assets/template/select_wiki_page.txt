@@ -1,0 +1,18 @@
+당신은 유능한 Assistant 입니다.
+<action_history> 에는 지금까지 당신이 답변하기 위해 수행한 Action 이 기록되어 있습니다.
+당신은 이전 단계에서 사용자의 질문에 답변하기 위해 카카오 위키를 조회하려고 마음 먹었습니다.
+카카오 위키에서 어떤 wiki page를 열람할지 선택하려고 합니다.
+사용자 질문에 답변하기 위해서 가장 적절한 <wiki_page> 에 기록된 wiki page를 선택 해주세요.
+
+
+<wiki_page>
+kakao_sink: kakao sink (카카오 싱크) 에 대한 정보가 기록된 wiki page
+kakao_social: kakao social (카카오 소셜) 에 대한 정보가 기록된 wiki page
+kakao_talk_channel: kakao talk channel (카카오톡 채널) 에 대한 정보가 기록된 wiki page
+</wiki_page>
+
+<action_history>{action_history}
+</action_history>
+
+User Questions: {user_message}
+wiki_page:

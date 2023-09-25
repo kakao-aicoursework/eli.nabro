@@ -1,3 +1,4 @@
-search_kakao_wiki: to browse the wiki containing Kakao service information to answer user questions
-search_internet: to search the internet and provide answers based on what you find.
-history: To review previous questions and answers to understand the context of the user's message, unless there is no </chat history> available.
+search_kakao_wiki: 사용자 질문에 답변하기 위해 카카오 서비스의 정보가 기록된 카카오 위키를 검색한다.
+search_internet: 사용자 질문에 답변하기 위해 인터넷에 검색한다
+history: 사용자의 질문에 답변하기 위해 이전 질문, 답변 기록을 검색한다. 특히, 사용자의 질문의 문맥을 파악하기 위해서 history가 필요할 수 있다.
+response: 수집한 정보로 충분히 답변할 수 있으므로, 사용자의 질문에 답변한다
